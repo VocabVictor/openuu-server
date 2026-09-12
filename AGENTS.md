@@ -45,3 +45,8 @@ commit (dozens of files, thousands of changed lines) cannot be reviewed.
   commits).
 * Large commits that already exist are left as they are (no rebase, no amend);
   the rule applies from the next commit on.
+* Several sessions share this working tree and its index. Commit only with an
+  explicit pathspec, `git commit -m "..." -- <your paths>`, which takes those
+  paths from the working tree and ignores whatever else is staged. A bare
+  `git commit`, `git commit -a` or `git add -A` sweeps other people's staged
+  work into your commit.
