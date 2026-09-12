@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# PROVIDE: openuu_hbbr
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Add the following lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# openuu_hbbr_enable (bool):            Set to NO by default.
+#               Set it to YES to enable openuu_hbbr.
+# openuu_hbbr_args (string):            Set extra arguments to pass to openuu_hbbr
+#               Default is "-k _".
+# openuu_hbbr_user (string):            Set user that openuu_hbbr will run under
+#               Default is "root".
+# openuu_hbbr_group (string):           Set group that openuu_hbbr will run under
+#               Default is "wheel".
+
+. /etc/rc.subr
+
+name=openuu_hbbr
+desc="OpenUU Relay Server"
+rcvar=openuu_hbbr_enable
+
+load_rc_config $name
+
+: ${openuu_hbbr_enable:=NO}
+: ${openuu_hbbr_args="-k _"}
+: ${openuu_hbbr_user:=openuu}
+: ${openuu_hbbr_group:=openuu}
+
+pidfile=/var/run/openuu_hbbr.pid
+command=/usr/sbin/daemon
+procname=/usr/local/sbin/hbbr
+openuu_hbbr_chdir=/var/db/openuu-server
+command_args="-p ${pidfile} -o /var/log/openuu-hbbr.log ${procname} ${openuu_hbbr_args}"
+## If you want the daemon do its log over syslog comment out the above line and remove the comment from the below replacement
+#command_args="-p ${pidfile} -T ${name} ${procname} ${openuu_hbbr_args}"
+
+start_precmd=openuu_hbbr_startprecmd
+
+openuu_hbbr_startprecmd()
+{
+    if [ -e ${pidfile} ]; then
+        chown ${openuu_hbbr_user}:${openuu_hbbr_group} ${pidfile};
+    else
+        install -o ${openuu_hbbr_user} -g ${openuu_hbbr_group} /dev/null ${pidfile};
+    fi
+    if [ -e ${openuu_hbbr_chdir} ]; then
+        chown -R ${openuu_hbbr_user}:${openuu_hbbr_group} ${openuu_hbbr_chdir};
+        chmod -R 770 ${openuu_hbbr_chdir};
+    else
+        mkdir -m 770 ${openuu_hbbr_chdir};
+        chown ${openuu_hbbr_user}:${openuu_hbbr_group} ${openuu_hbbr_chdir};
+    fi
+    if [ -e /var/log/openuu-hbbr.log ]; then
+        chown -R ${openuu_hbbr_user}:${openuu_hbbr_group} /var/log/openuu-hbbr.log;
+        chmod 660 /var/log/openuu-hbbr.log;
+    else
+        install -o ${openuu_hbbr_user} -g ${openuu_hbbr_group} /dev/null /var/log/openuu-hbbr.log;
+        chmod 660 /var/log/openuu-hbbr.log;
+    fi
+}
+
+run_rc_command "$1"

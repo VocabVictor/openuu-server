@@ -1,7 +1,7 @@
 # Configuration & Environment Variables
 
 This document is the single reference for every option that the open‑source
-RustDesk server binaries (`hbbs`, `hbbr`) understand: command‑line flags,
+OpenUU server binaries (`hbbs`, `hbbr`) understand: command‑line flags,
 environment variables, and configuration files.
 
 > **TL;DR** — For most people the command‑line flags shown by `hbbs --help` /
@@ -51,7 +51,7 @@ in the inherited process environment.
 
 🅴 = set through the inherited process environment.
 
-> `PORT_FOR_API` / `KEY_FOR_API` are only used by RustDesk Server **Pro** and its
+> `PORT_FOR_API` / `KEY_FOR_API` are only used by OpenUU Server **Pro** and its
 > API; they have no effect in the open‑source server.
 
 ---
@@ -102,7 +102,7 @@ Both can also be edited live through the `hbbr` loopback console (`ba`/`br`,
 ### Runtime console
 
 The runtime consoles are TCP command transports built into the services; they
-are not `rustdesk-utils` commands or interactive standard-input consoles. A
+are not `openuu-utils` commands or interactive standard-input consoles. A
 connection from a loopback address is treated as a single console command:
 
 ```bash
@@ -176,7 +176,7 @@ image, the working directory is `/data`.
 
 ## Docker image variables
 
-The supervisor image (`rustdesk/rustdesk-server-s6`) starts both binaries with
+The supervisor image (`openuu-server-s6`) starts both binaries with
 s6 and adds a few convenience variables handled by its service scripts, **not**
 by `hbbs`/`hbbr` directly:
 
@@ -190,7 +190,7 @@ by `hbbs`/`hbbr` directly:
 Any variable from the tables above can also be passed straight through the
 container's environment (e.g. `-e ALWAYS_USE_RELAY=Y`, `-e RUST_LOG=debug`).
 
-The classic scratch image (`rustdesk/rustdesk-server`) contains only the
+The classic scratch image (`openuu-server`) contains only the
 binaries and does **not** implement `RELAY`, `ENCRYPTED_ONLY`, `KEY_PUB`, or
 `KEY_PRIV`; those variables are ignored by that image.
 
@@ -202,7 +202,7 @@ binaries and does **not** implement `RELAY`, `ENCRYPTED_ONLY`, `KEY_PUB`, or
 
 ```bash
 # Tell clients where the relay listens because it is not using port 21117.
-hbbs -p 22116 -r rustdesk.example.com:22117
+hbbs -p 22116 -r openuu.example.com:22117
 hbbr -p 22117
 ```
 
@@ -210,7 +210,7 @@ hbbr -p 22117
 
 ```ini
 # Non-standard ports shared by both binaries; hbbr listens on PORT+1.
-relay-servers=rustdesk.example.com:22117
+relay-servers=openuu.example.com:22117
 PORT=22116
 ```
 
@@ -218,10 +218,10 @@ PORT=22116
 
 ```yaml
 services:
-  rustdesk-server:
-    image: rustdesk/rustdesk-server-s6:latest
+  openuu-server:
+    image: openuu-server-s6:latest
     environment:
-      - RELAY=rustdesk.example.com:21117
+      - RELAY=openuu.example.com:21117
       - ALWAYS_USE_RELAY=Y
       - RUST_LOG=info
       - SINGLE_BANDWIDTH=256

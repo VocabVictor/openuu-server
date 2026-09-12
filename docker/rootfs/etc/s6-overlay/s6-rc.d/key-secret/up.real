@@ -48,7 +48,7 @@ fi
 if [ -f /data/id_ed25519.pub ] && [ -f /data/id_ed25519 ] ; then
   chmod 0600 /data/id_ed25519.pub /data/id_ed25519
   chown root:root /data/id_ed25519.pub /data/id_ed25519
-  /usr/bin/rustdesk-utils validatekeypair "$(cat /data/id_ed25519.pub)" "$(cat /data/id_ed25519)" || {
+  /usr/bin/openuu-utils validatekeypair "$(cat /data/id_ed25519.pub)" "$(cat /data/id_ed25519)" || {
     echo "Key pair not valid"
     /run/s6/basedir/bin/halt
     exit 1

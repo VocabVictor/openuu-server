@@ -1,59 +1,30 @@
-# RustDesk Server Program
+# OpenUU Server
 
-[![build](https://github.com/rustdesk/rustdesk-server/actions/workflows/build.yaml/badge.svg)](https://github.com/rustdesk/rustdesk-server/actions/workflows/build.yaml)
+Self-hosted rendezvous and relay services for [OpenUU](https://github.com/VocabVictor/openuu).
 
-[**Download**](https://github.com/rustdesk/rustdesk-server/releases)
+## Programs
 
-[**Manual**](https://rustdesk.com/docs/en/self-host/)
+- `hbbs`: device ID registration, signaling and connection coordination.
+- `hbbr`: relay traffic when direct connections are unavailable.
+- `openuu-utils`: server diagnostics and key utilities.
 
-[**Configuration & environment variables**](docs/environment-variables.md)
+## Build
 
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**How to migrate OSS to Pro**](https://rustdesk.com/docs/en/self-host/rustdesk-server-pro/installscript/#convert-from-open-source)
-
-Self-host your own RustDesk server, it is free and open source.
-
-> [!IMPORTANT]
-> **Need more features?** [RustDesk Server Pro](https://rustdesk.com/pricing.html) might suit you better.
->
-> **Want to develop your own server?** Start with [rustdesk-server-demo](https://github.com/rustdesk/rustdesk-server-demo), a simpler starting point than this repository.
-
-## How to build manually
-
-```bash
+```sh
+git submodule update --init --recursive
 cargo build --release
 ```
 
-Three executables will be generated in target/release.
+The binaries are written to `target/release`. Deployment examples are in `systemd/`, `docker-compose.yml` and `kubernetes/`.
+Docker examples refer to locally built OpenUU images; no published image is assumed.
+For a classic image, copy statically linked Linux `hbbs` and `hbbr` binaries to
+`docker-classic/`, then run `docker build -t openuu-server:latest docker-classic`.
+The Docker host must have this image before using the Compose example.
+Service names and data directories now use `openuu`; migrate existing data and keys before switching an old deployment.
+Run `hbbs --help` and `hbbr --help` for command-line options.
 
-- hbbs - RustDesk ID/Rendezvous server
-- hbbr - RustDesk relay server
-- rustdesk-utils - RustDesk CLI utilities
+[Configuration and environment variables](docs/environment-variables.md)
 
-You can find updated binaries on the [Releases](https://github.com/rustdesk/rustdesk-server/releases) page.
+## License and attribution
 
-## Configuration
-
-`hbbs` and `hbbr` can be configured with command-line flags, environment
-variables, or an `.env` / config file. Run `hbbs --help` or `hbbr --help` to see
-the available flags.
-
-The most common options:
-
-| Option | Flag | Env var | Applies to | Purpose |
-| --- | --- | --- | --- | --- |
-| Key | `-k` | `KEY` | hbbs, hbbr | `hbbs` loads/generates one by default |
-| Bind address | `-b` | `BIND` | hbbs, hbbr | Local IP address to listen on (default: all interfaces; requires 1.1.17+) |
-| Port | `-p` | `PORT` | hbbs, hbbr | Listening port (hbbs `21116`, hbbr `21117`) |
-| Relay servers | `-r` | `RELAY-SERVERS` | hbbs | Override when the relay uses a different address or a non-standard port |
-| Force relay | — | `ALWAYS_USE_RELAY` | hbbs | `Y` disables direct connections |
-| Log level | — | `RUST_LOG` | hbbs, hbbr | e.g. `debug` (default `info`) |
-
-See **[docs/environment-variables.md](docs/environment-variables.md)** for the
-full list of variables, the file/flag/env precedence rules, database and relay
-bandwidth tuning, Docker image variables, and examples.
-
-## Installation
-
-Please follow this [doc](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/)
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

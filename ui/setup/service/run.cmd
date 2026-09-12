@@ -7,7 +7,7 @@ cd ..
 %nssm% install %1 "%cd%\bin\%1.exe"
 
 %nssm% set %1 DisplayName %1
-%nssm% set %1 Description rustdesk %1 server
+%nssm% set %1 Description openuu %1 server
 %nssm% set %1 Start SERVICE_AUTO_START
 
 %nssm% set %1 ObjectName LocalSystem

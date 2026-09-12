@@ -1,30 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rustdesk-server
+  name: openuu-server
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: rustdesk
+      app: openuu
   template:
     metadata:
       labels:
-        app: rustdesk
+        app: openuu
     spec:
       containers:
         # id Server (HBBS)
         - name: hbbs
-          image: rustdesk/rustdesk-server:latest
+          image: openuu-server:latest
           env:
             - name: RELAY_HOST
-              value: "rustdesk.yourdomain.tld"
+              value: "openuu.yourdomain.tld"
           command: ["hbbs", "-r", "$(RELAY_HOST):21117", "-k", "_"]
           volumeMounts:
             - mountPath: /root
-              name: rustdesk-data
+              name: openuu-data
           ports:
             - containerPort: 21115
             - containerPort: 21116
@@ -35,28 +35,28 @@ spec:
 
         # Relay Server (HBBR)
         - name: hbbr
-          image: rustdesk/rustdesk-server:latest
+          image: openuu-server:latest
           command: ["hbbr", "-k", "_"]
           volumeMounts:
             - mountPath: /root
-              name: rustdesk-data
+              name: openuu-data
           ports:
             - containerPort: 21117
             - containerPort: 21119
 
       volumes:
-        - name: rustdesk-data
+        - name: openuu-data
           persistentVolumeClaim:
-            claimName: rustdesk-pvc
+            claimName: openuu-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: rustdesk-service
+  name: openuu-service
 spec:
   type: LoadBalancer # Or NodePort
   selector:
-    app: rustdesk
+    app: openuu
   ports:
     - name: hbbs-tcp
       port: 21115
@@ -78,7 +78,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: rustdesk-pvc
+  name: openuu-pvc
 spec:
   accessModes:
     - ReadWriteOnce # RWM would be available only with pro version

@@ -1,17 +1,17 @@
 
 [Unit]
-Description=Rustdesk Signal Server
+Description=OpenUU Signal Server
 
 [Service]
 Type=simple
 LimitNOFILE=1000000
 ExecStart=/usr/bin/hbbs
-WorkingDirectory=/var/lib/rustdesk-server/
+WorkingDirectory=/var/lib/openuu-server/
 User=
 Group=
 Restart=always
-StandardOutput=append:/var/log/rustdesk-server/hbbs.log
-StandardError=append:/var/log/rustdesk-server/hbbs.error
+StandardOutput=append:/var/log/openuu-server/hbbs.log
+StandardError=append:/var/log/openuu-server/hbbs.error
 # Restart service after 10 seconds if node service crashes
 RestartSec=10
 

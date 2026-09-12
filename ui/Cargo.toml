@@ -1,7 +1,7 @@
 [package]
-name = "rustdesk_server"
+name = "openuu_server"
 version = "0.1.2"
-description = "rustdesk server gui"
+description = "OpenUU Server GUI"
 authors = ["elilchen"]
 edition = "2021"
 

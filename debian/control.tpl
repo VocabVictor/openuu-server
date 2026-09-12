@@ -1,27 +1,27 @@
-Source: rustdesk-server
+Source: openuu-server
 Section: net
 Priority: optional
 Maintainer: open-trade <info@rustdesk.com>
 Build-Depends: debhelper (>= 10), pkg-config
 Standards-Version: 4.5.0
-Homepage: https://rustdesk.com/
+Homepage: https://github.com/VocabVictor/openuu-server
 
-Package: rustdesk-server-hbbs
+Package: openuu-server-hbbs
 Architecture: {{ ARCH }}
 Depends: systemd ${misc:Depends}
-Description: RustDesk server
- Self-host your own RustDesk server, it is free and open source.
+Description: OpenUU server
+ Self-host your own OpenUU server, it is free and open source.
 
-Package: rustdesk-server-hbbr
+Package: openuu-server-hbbr
 Architecture: {{ ARCH }}
 Depends: systemd ${misc:Depends}
-Description: RustDesk server
- Self-host your own RustDesk server, it is free and open source.
- This package contains the RustDesk relay server.
+Description: OpenUU server
+ Self-host your own OpenUU server, it is free and open source.
+ This package contains the OpenUU relay server.
 
-Package: rustdesk-server-utils
+Package: openuu-server-utils
 Architecture: {{ ARCH }}
 Depends: ${misc:Depends}
-Description: RustDesk server
- Self-host your own RustDesk server, it is free and open source.
- This package contains the rustdesk-utils binary.
+Description: OpenUU server
+ Self-host your own OpenUU server, it is free and open source.
+ This package contains the openuu-utils binary.

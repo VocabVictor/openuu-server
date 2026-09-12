@@ -8,7 +8,7 @@ use async_std::{
     task::{spawn, spawn_local},
 };
 use crossbeam_channel::bounded;
-use rustdesk_server::{
+use openuu_server::{
     usecase::{presenter, view, watcher},
     BUFFER,
 };

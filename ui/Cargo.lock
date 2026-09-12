@@ -2314,7 +2314,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustdesk_server"
+name = "openuu_server"
 version = "0.1.2"
 dependencies = [
  "async-std",
