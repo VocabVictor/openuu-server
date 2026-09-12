@@ -47,6 +47,8 @@ mod sessions;
 mod secure_tests;
 #[cfg(test)]
 mod relay_forward_tests;
+#[cfg(test)]
+mod relay_response_tests;
 mod udp;
 mod tcp;
 mod punch;

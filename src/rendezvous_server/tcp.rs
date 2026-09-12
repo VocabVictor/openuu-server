@@ -65,6 +65,7 @@ impl RendezvousServer {
                 }
                 Some(rendezvous_message::Union::RelayResponse(mut rr)) => {
                     let addr_b = AddrMangle::decode(&rr.socket_addr);
+                    self.answer_peer_initiated_relay(&rr, addr_b, sink).await;
                     rr.socket_addr = Default::default();
                     let id = rr.id();
                     if !id.is_empty() {
@@ -232,5 +233,36 @@ impl RendezvousServer {
             }
         }
         false
+    }
+}
+
+impl RendezvousServer {
+    /// A RelayResponse carrying a uuid means the controlled peer chose to relay on its own.
+    /// Hand it a peer ticket minted from the controller's session seen in the punch request,
+    /// on the socket it just used (docs/relay-ticket-peer-initiated.md). Nothing is sent when
+    /// there is no matching session; the peer then falls back to its own login.
+    async fn answer_peer_initiated_relay(
+        &self,
+        rr: &RelayResponse,
+        controller: SocketAddr,
+        sink: &mut Option<Sink>,
+    ) {
+        if rr.uuid.is_empty() {
+            return;
+        }
+        let Some(token) = self.punch_sessions.token_for(controller, rr.id()).await else {
+            return;
+        };
+        let Some(ticket) = crate::account::peer_ticket(&token, &rr.uuid).await else {
+            return;
+        };
+        let mut back = RendezvousMessage::new();
+        back.set_request_relay(RequestRelay {
+            uuid: rr.uuid.clone(),
+            token: ticket,
+            ..Default::default()
+        });
+        Self::send_to_sink(sink, back).await;
+        log::info!("event=relay_peer_ticket uuid={} via=response", rr.uuid);
     }
 }
