@@ -1,6 +1,7 @@
 # Relay ticket validation over HTTP
 
-Status: approved (2026-09-13; TLS requirement added). Owner: openuu-e9.
+Status: implemented 2026-09-13 (account endpoint c7357a6, hbbr client ff6e55f; not yet
+deployed, hbbr still runs the SQLite path until its unit sets the variables). Owner: openuu-e9.
 
 ## Why
 
@@ -41,7 +42,8 @@ X-OpenUU-Internal: <secret>
 `hbbr` gains an HTTP redeem path:
 
 * `OPENUU_ACCOUNT_URL` (for example `http://10.0.0.5:21114`) plus
-  `OPENUU_INTERNAL_SECRET` select it. Both unset → the current in-process
+  `OPENUU_INTERNAL_SECRET` (or `OPENUU_INTERNAL_SECRET_FILE`) select it; the
+  secret must be at least 16 bytes. Both unset → the current in-process
   SQLite path is used unchanged, so the same binary serves both layouts.
 * One request per `RequestRelay` (each end of a relay redeems its own
   ticket, as today). Connect timeout 2 s, total timeout 3 s, one retry on a
