@@ -212,6 +212,20 @@ impl Accounts {
             .bind(digest(ticket)).bind(relay_id).bind(now()).bind(now()).execute(&self.pool).await?;
         Ok(result.rows_affected() == 1)
     }
+    /// Why `redeem` returned false, for the internal HTTP answer. Only reached on the
+    /// failure path, so the extra lookup costs nothing on the normal one.
+    pub async fn ticket_failure(&self, ticket: &str, relay_id: &str) -> ResultType<&'static str> {
+        let row = sqlx::query("SELECT relay_id, expires FROM relay_tickets WHERE hash=?")
+            .bind(digest(ticket))
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(match row {
+            None => "unknown",
+            Some(row) if row.get::<i64, _>(1) <= now() => "expired",
+            Some(row) if row.get::<String, _>(0) != relay_id => "relay_mismatch",
+            Some(_) => "unknown",
+        })
+    }
     pub async fn revoke(&self, token: &str) -> ResultType<()> {
         sqlx::query("DELETE FROM account_sessions WHERE token_hash=?")
             .bind(digest(token))

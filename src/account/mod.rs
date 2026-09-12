@@ -22,11 +22,14 @@ use tokio::sync::{Mutex, Semaphore};
 
 mod store;
 mod api;
+pub mod internal;
 use api::{address_book, current, empty_directory, login, logout, relay_ticket};
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod http_tests;
+#[cfg(test)]
+mod internal_tests;
 
 pub struct Accounts {
     pool: SqlitePool,
@@ -117,7 +120,10 @@ pub async fn redeem_ticket(ticket: &str, relay_id: &str) -> bool {
     }
 }
 pub fn router(db: Arc<Accounts>) -> Router {
-    Router::new()
+    router_with_internal(db, internal::Secret::from_env())
+}
+pub fn router_with_internal(db: Arc<Accounts>, secret: Option<internal::Secret>) -> Router {
+    let router = Router::new()
         .route("/api/wol/poll", post(wol::poll))
         .route("/api/wol/status", post(wol::status))
         .route("/api/wol/wake", post(wol::wake))
@@ -130,5 +136,6 @@ pub fn router(db: Arc<Accounts>) -> Router {
         .route("/api/currentUser", post(current).get(current))
         .route("/api/logout", post(logout))
         .route("/api/login-options", get(|| async { Json(json!([])) }))
-        .layer(Extension(db))
+        .layer(Extension(db.clone()));
+    internal::attach(router, db, secret)
 }
