@@ -1,6 +1,6 @@
 # Relay ticket validation over HTTP
 
-Status: proposal (waiting for approval). Owner: openuu-e9.
+Status: approved (2026-09-13; TLS requirement added). Owner: openuu-e9.
 
 ## Why
 
@@ -53,9 +53,18 @@ X-OpenUU-Internal: <secret>
   ticket. No fail-open mode; a relay that cannot reach the account service is
   a misconfiguration to fix, not a state to run in.
 * The HTTP client is `reqwest` (already a dependency of the workspace),
-  built once at start-up with the timeouts above, no proxy, plain HTTP inside
-  the private network. TLS can be added by pointing the URL at an https
-  endpoint; nothing else changes.
+  built once at start-up with the timeouts above, no proxy.
+* The relay host will be a different cloud machine, so the request crosses
+  the public internet. `hbbr` therefore refuses to start unless
+  `OPENUU_ACCOUNT_URL` is `https://…`, or `http://` to a loopback or private
+  address (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
+  `::1`, `fc00::/7`). A literal host name is not resolved for this check;
+  only `https` is accepted for names. In production a reverse proxy (caddy
+  or nginx) terminates TLS in front of `openuu-account`, so the secret never
+  travels in clear text. (Alternative kept as a note, not implemented: sign
+  each request with `HMAC-SHA256(secret, timestamp + ticket + relay_id)` and
+  reject a timestamp skew over 60 s; it needs replay protection on top and
+  was judged not worth it while TLS termination is available.)
 
 ## Transition
 
