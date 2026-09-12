@@ -42,6 +42,7 @@ use std::{
 
 mod io;
 mod secure;
+mod sessions;
 #[cfg(test)]
 mod secure_tests;
 #[cfg(test)]
@@ -96,6 +97,7 @@ struct Inner {
 #[derive(Clone)]
 pub struct RendezvousServer {
     tcp_punch: Arc<Mutex<HashMap<SocketAddr, Sink>>>,
+    punch_sessions: Arc<sessions::PunchSessions>,
     pm: PeerMap,
     tx: Sender,
     relay_servers: Arc<RelayServers>,
@@ -151,6 +153,7 @@ impl RendezvousServer {
         };
         let mut rs = Self {
             tcp_punch: Arc::new(Mutex::new(HashMap::new())),
+            punch_sessions: Default::default(),
             pm,
             tx: tx.clone(),
             relay_servers: Default::default(),
