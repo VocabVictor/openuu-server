@@ -1,7 +1,7 @@
 # Relay tickets for an unattended controlled peer
 
-Status: proposal (openuu-e9, 2026-09-13), awaiting lenovo-0f. Depends on
-nothing in docs/relay-ticket-http.md; both can ship independently.
+Status: approved and implemented 2026-09-13 (server eb22859 + b3bb231, client
+e5418fda2); not yet deployed. Independent of docs/relay-ticket-http.md.
 
 ## Problem
 
@@ -76,6 +76,25 @@ peer needs no account.
 * Old controller: unaffected; it never sees the peer ticket.
 * When every peer is updated, `require_login()` and `relay_ticket()` can be
   removed from `create_relay_connection_` in a follow-up.
+
+## Known limitations
+
+* The peer ticket travels `hbbs -> peer` on the peer's registration channel,
+  which is plain UDP for most peers. An eavesdropper on that path can
+  redeem the ticket first and take the peer's place on the relay; the
+  session stays end-to-end encrypted, so this is a denial of that one
+  attempt, logged as `event=relay_denied`. Follow-up: encrypt the peer's
+  registration channel (the UDP path has no key exchange today).
+* Only relays requested by the controller through `hbbs`
+  (`handle_request_relay`) carry a forwarded ticket. When the *peer*
+  decides to relay on its own after a punch-hole or intranet attempt
+  (`rendezvous_mediator/punch.rs`, `relay.rs::handle_intranet` with
+  `initiate = true`) it generates the uuid itself, `hbbs` never sees it and
+  the peer still needs its own login for that attempt. Covering it needs
+  either `hbbs` to answer the peer's `RelayResponse` with a ticket (state
+  per controller connection, a reply on the peer's socket) or the
+  controller to route those relays through `hbbs` as well; both are a
+  separate design.
 
 ## Changes and tests
 
