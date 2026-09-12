@@ -31,6 +31,9 @@ use std::{
 mod console;
 mod connection;
 mod stream;
+pub mod ticket;
+#[cfg(test)]
+mod ticket_tests;
 use connection::io_loop;
 use console::check_cmd;
 use stream::StreamTrait;
@@ -59,6 +62,7 @@ pub async fn start_with_bind(
     key: &str,
 ) -> ResultType<()> {
     let key = get_server_sk(key);
+    ticket::init()?;
     if let Ok(mut file) = std::fs::File::open(BLACKLIST_FILE) {
         let mut contents = String::new();
         if file.read_to_string(&mut contents).is_ok() {
