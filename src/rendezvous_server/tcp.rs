@@ -29,7 +29,12 @@ impl RendezvousServer {
                         log::warn!("event=relay_request_unauthorized from={} peer={}", addr, rf.id);
                         return false;
                     }
-                    rf.token.clear();
+                    // An unattended peer has no session of its own: hand it a ticket bound to
+                    // this uuid (docs/relay-ticket-peer.md). Old peers ignore it and, like a
+                    // peer that gets an empty token from an old hbbs, fetch their own.
+                    rf.token = crate::account::peer_ticket(&rf.token, &rf.uuid)
+                        .await
+                        .unwrap_or_default();
                     // there maybe several attempt, so sink can be none
                     if let Some(sink) = sink.take() {
                         self.tcp_punch.lock().await.insert(try_into_v4(addr), sink);

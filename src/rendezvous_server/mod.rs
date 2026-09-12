@@ -44,6 +44,8 @@ mod io;
 mod secure;
 #[cfg(test)]
 mod secure_tests;
+#[cfg(test)]
+mod relay_forward_tests;
 mod udp;
 mod tcp;
 mod punch;

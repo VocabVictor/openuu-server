@@ -139,7 +139,7 @@ impl Accounts {
         Ok(sqlx::query("SELECT a.name FROM account_sessions s JOIN accounts a ON a.name=s.name WHERE s.token_hash=? AND s.expires>? AND a.enabled=1")
             .bind(digest(token)).bind(now()).fetch_optional(&self.pool).await?.map(|r| r.get("name")))
     }
-    pub(super) async fn login(&self, name: String, password: String) -> ResultType<Option<String>> {
+    pub(crate) async fn login(&self, name: String, password: String) -> ResultType<Option<String>> {
         if name.len() > 64 || password.len() > 72 {
             return Ok(None);
         }
