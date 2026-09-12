@@ -2,6 +2,26 @@ use super::*;
 
 impl Accounts {
     pub async fn open(path: &str) -> ResultType<Self> {
+        Self::open_with_peers(path, None).await
+    }
+    /// `peer_db` is the hbbs database (`db_v2.sqlite3`), opened read-only so audit
+    /// records can be checked against registered ids; without it every record is
+    /// dropped as unknown.
+    pub async fn open_with_peers(path: &str, peer_db: Option<&str>) -> ResultType<Self> {
+        let peers = match peer_db {
+            Some(peer_db) => Some(
+                SqlitePoolOptions::new()
+                    .max_connections(1)
+                    .connect_with(
+                        SqliteConnectOptions::new()
+                            .filename(peer_db)
+                            .read_only(true)
+                            .busy_timeout(Duration::from_secs(5)),
+                    )
+                    .await?,
+            ),
+            None => None,
+        };
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect_with({
@@ -20,9 +40,12 @@ impl Accounts {
             .await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS relay_tickets (hash BLOB PRIMARY KEY, session_hash BLOB NOT NULL, relay_id TEXT NOT NULL, expires INTEGER NOT NULL)").execute(&pool).await?;
         wol::init(&pool).await?;
+        audit::init(&pool).await?;
         Ok(Self {
             pool,
+            peers,
             attempts: Mutex::new(HashMap::new()),
+            audit_rate: Mutex::new(HashMap::new()),
             hashing: Arc::new(Semaphore::new(4)),
         })
     }

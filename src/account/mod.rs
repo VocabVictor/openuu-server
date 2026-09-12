@@ -1,3 +1,4 @@
+mod audit;
 mod wol;
 use axum::{
     extract::{ConnectInfo, Extension},
@@ -30,10 +31,14 @@ mod tests;
 mod http_tests;
 #[cfg(test)]
 mod internal_tests;
+#[cfg(test)]
+mod audit_tests;
 
 pub struct Accounts {
     pool: SqlitePool,
+    peers: Option<SqlitePool>,
     attempts: Mutex<HashMap<std::net::IpAddr, (i64, u32)>>,
+    audit_rate: Mutex<HashMap<std::net::IpAddr, (i64, u32)>>,
     hashing: Arc<Semaphore>,
 }
 pub struct AccountSummary {
@@ -146,6 +151,7 @@ pub fn router(db: Arc<Accounts>) -> Router {
 }
 pub fn router_with_internal(db: Arc<Accounts>, secret: Option<internal::Secret>) -> Router {
     let router = Router::new()
+        .route("/api/audit/conn", post(audit::conn))
         .route("/api/wol/poll", post(wol::poll))
         .route("/api/wol/status", post(wol::status))
         .route("/api/wol/wake", post(wol::wake))

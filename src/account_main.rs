@@ -12,7 +12,7 @@ const USAGE: &str = "Usage:
     openuu-account delete NAME          Delete an account, its sessions, tickets and wake state
     openuu-account list                 List accounts with enabled flag and live session count
 
-Environment: OPENUU_ACCOUNT_DB (default openuu-accounts.sqlite3), OPENUU_ACCOUNT_BIND (default 127.0.0.1:21114)";
+Environment: OPENUU_ACCOUNT_DB (default openuu-accounts.sqlite3), OPENUU_ACCOUNT_BIND (default 127.0.0.1:21114), OPENUU_PEER_DB (hbbs db_v2.sqlite3, default ./db_v2.sqlite3; audit records from ids not in it are dropped)";
 
 fn new_password() -> ResultType<String> {
     let password = std::env::var("OPENUU_NEW_PASSWORD")
@@ -73,7 +73,14 @@ async fn main() -> ResultType<()> {
     }
     let path =
         std::env::var("OPENUU_ACCOUNT_DB").unwrap_or_else(|_| "openuu-accounts.sqlite3".into());
-    let db = Arc::new(Accounts::open(&path).await?);
+    let peer_db = std::env::var("OPENUU_PEER_DB").unwrap_or_else(|_| "db_v2.sqlite3".into());
+    let db = Arc::new(match Accounts::open_with_peers(&path, Some(&peer_db)).await {
+        Ok(db) => db,
+        Err(err) => {
+            log::warn!("event=peer_db_unavailable path={peer_db} err={err}; connection audits will be dropped");
+            Accounts::open(&path).await?
+        }
+    });
     if let Some(command) = args.first() {
         if args.len() > 2 {
             bail!("{USAGE}");
