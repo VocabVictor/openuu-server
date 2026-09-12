@@ -104,8 +104,9 @@ peer needs no account.
   from `secure_tests.rs`: forwarded message carries a 64-hex token that
   `redeem` accepts for that uuid and refuses for another). Two commits.
 * `openuu`: `create_relay_connection_` prefers the forwarded token (one
-  commit); a unit test is not practical there (needs a live server), so it
-  is covered by the CVM smoke test with the temporary login removed from
-  the controlled peers.
+  commit); `relay_token` is unit-tested for both branches (forwarded ticket
+  used as is, empty ticket falls back to the login check) and the whole
+  path by the CVM smoke test with the temporary login removed from the
+  controlled peers.
 * Order: server first (deploy), then client; the temporary session tokens
   on the two test peers are removed after the client build is installed.
