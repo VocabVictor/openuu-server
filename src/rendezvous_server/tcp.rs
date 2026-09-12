@@ -35,11 +35,25 @@ impl RendezvousServer {
                         self.tcp_punch.lock().await.insert(try_into_v4(addr), sink);
                     }
                     if let Some(peer) = self.pm.get_in_memory(&rf.id).await {
+                        let peer_addr = peer.read().await.socket_addr;
+                        log::info!(
+                            "event=relay_request from={} id={} peer={} relay={} uuid={}",
+                            addr,
+                            rf.id,
+                            peer_addr,
+                            rf.relay_server,
+                            rf.uuid
+                        );
                         let mut msg_out = RendezvousMessage::new();
                         rf.socket_addr = AddrMangle::encode(addr).into();
                         msg_out.set_request_relay(rf);
-                        let peer_addr = peer.read().await.socket_addr;
                         self.tx.send(Data::Msg(msg_out.into(), peer_addr)).ok();
+                    } else {
+                        log::info!(
+                            "event=relay_request from={} id={} decision=peer_not_in_memory",
+                            addr,
+                            rf.id
+                        );
                     }
                     return true;
                 }
@@ -60,6 +74,13 @@ impl RendezvousServer {
                             rr.relay_server = self.get_relay_server(addr.ip(), addr_b.ip());
                         }
                     }
+                    log::info!(
+                        "event=relay_response from={} to={} relay={} refuse={}",
+                        addr,
+                        addr_b,
+                        rr.relay_server,
+                        rr.refuse_reason
+                    );
                     msg_out.set_relay_response(rr);
                     allow_err!(self.send_to_tcp_sync(msg_out, addr_b).await);
                 }
