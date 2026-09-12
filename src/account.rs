@@ -1,3 +1,4 @@
+mod wol;
 use axum::{
     extract::{ConnectInfo, Extension},
     http::{HeaderMap, StatusCode},
@@ -57,6 +58,7 @@ impl Accounts {
             .execute(&pool)
             .await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS relay_tickets (hash BLOB PRIMARY KEY, session_hash BLOB NOT NULL, relay_id TEXT NOT NULL, expires INTEGER NOT NULL)").execute(&pool).await?;
+        wol::init(&pool).await?;
         Ok(Self {
             pool,
             attempts: Mutex::new(HashMap::new()),
@@ -323,6 +325,9 @@ pub async fn redeem_ticket(ticket: &str, relay_id: &str) -> bool {
 }
 pub fn router(db: Arc<Accounts>) -> Router {
     Router::new()
+        .route("/api/wol/poll", post(wol::poll))
+        .route("/api/wol/status", post(wol::status))
+        .route("/api/wol/wake", post(wol::wake))
         .route("/api/ab", get(address_book))
         .route("/api/users", get(empty_directory))
         .route("/api/peers", get(empty_directory))
