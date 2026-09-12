@@ -194,8 +194,48 @@ impl RendezvousServer {
             }
         } else {
             let (a, mut b) = Framed::new(stream, BytesCodec::new()).split();
-            sink = Some(Sink::TcpStream(a));
-            while let Ok(Some(Ok(bytes))) = timeout(30_000, b.next()).await {
+            sink = Some(Sink::TcpStream(a, None));
+            // Offer the secure_tcp handshake when we have a private key to sign it with; clients
+            // that do not expect it ignore the message.
+            let mut offer = match self.inner.sk.as_ref() {
+                Some(sk) => {
+                    let (offer, msg) = secure::KeyOffer::new(sk);
+                    Self::send_to_sink(&mut sink, msg).await;
+                    Some(offer)
+                }
+                None => None,
+            };
+            let mut dec: Option<hbb_common::tcp::Encrypt> = None;
+            while let Ok(Some(Ok(mut bytes))) = timeout(30_000, b.next()).await {
+                if let Some(dec) = dec.as_mut() {
+                    if let Err(err) = dec.dec(&mut bytes) {
+                        log::warn!("event=secure_tcp from={} error=decrypt err={}", addr, err);
+                        break;
+                    }
+                } else if let Some(pending) = offer.as_ref() {
+                    if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
+                        if let Some(rendezvous_message::Union::KeyExchange(ex)) = msg_in.union {
+                            match pending.accept(&ex) {
+                                Some(key) => {
+                                    let (enc, d) = secure::encrypt_pair(&key);
+                                    if let Some(Sink::TcpStream(_, slot)) = sink.as_mut() {
+                                        *slot = Some(enc);
+                                    }
+                                    dec = Some(d);
+                                    offer = None;
+                                    log::info!("event=secure_tcp from={} secured=true", addr);
+                                }
+                                None => {
+                                    log::warn!("event=secure_tcp from={} error=bad_key_exchange", addr);
+                                    break;
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                    // First message is not a key exchange: an older client, stay in clear text.
+                    offer = None;
+                }
                 if !self.handle_tcp(&bytes, &mut sink, addr, key, ws).await {
                     break;
                 }
