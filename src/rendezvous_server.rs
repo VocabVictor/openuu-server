@@ -512,7 +512,10 @@ impl RendezvousServer {
         if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(bytes) {
             match msg_in.union {
                 Some(rendezvous_message::Union::PunchHoleRequest(ph)) => {
-                    if !crate::account::authorized(&ph.token).await { return false; }
+                    if !crate::account::authorized(&ph.token).await {
+                        log::warn!("event=punch_unauthorized from={} peer={}", addr, ph.id);
+                        return false;
+                    }
                     // there maybe several attempt, so sink can be none
                     if let Some(sink) = sink.take() {
                         self.tcp_punch.lock().await.insert(try_into_v4(addr), sink);
@@ -521,7 +524,10 @@ impl RendezvousServer {
                     return true;
                 }
                 Some(rendezvous_message::Union::RequestRelay(mut rf)) => {
-                    if !crate::account::authorized(&rf.token).await { return false; }
+                    if !crate::account::authorized(&rf.token).await {
+                        log::warn!("event=relay_request_unauthorized from={} peer={}", addr, rf.id);
+                        return false;
+                    }
                     rf.token.clear();
                     // there maybe several attempt, so sink can be none
                     if let Some(sink) = sink.take() {

@@ -463,7 +463,10 @@ async fn make_pair_(stream: impl StreamTrait, addr: SocketAddr, key: &str, limit
     if let Ok(Some(Ok(bytes))) = timeout(30_000, stream.recv()).await {
         if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
             if let Some(rendezvous_message::Union::RequestRelay(rf)) = msg_in.union {
-                if !hbbs::account::redeem_ticket(&rf.token, &rf.uuid).await { return; }
+                if !hbbs::account::redeem_ticket(&rf.token, &rf.uuid).await {
+                    log::warn!("event=relay_denied from={} relay={}", addr, rf.uuid);
+                    return;
+                }
                 if !key.is_empty() && rf.licence_key != key {
                     log::warn!("Relay authentication failed from {} - invalid key", addr);
                     return;

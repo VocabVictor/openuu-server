@@ -114,16 +114,18 @@ pub(super) async fn wake(
     let owner = owner(&db, &headers).await?;
     let (state, helper) = availability(&db, &owner, &input.id).await?;
     let Some(helper) = helper else {
+        log::info!("event=wake_rejected user={owner} target={} state={state}", input.id);
         return Err(error(StatusCode::CONFLICT, &state));
     };
     let result = sqlx::query("INSERT INTO wol_jobs(owner,target,helper,expires) VALUES(?,?,?,?) ON CONFLICT(owner,target) DO UPDATE SET helper=excluded.helper,expires=excluded.expires WHERE wol_jobs.expires<?")
-        .bind(&owner).bind(&input.id).bind(helper).bind(now()+30).bind(now()).execute(&db.pool).await.map_err(unavailable)?;
+        .bind(&owner).bind(&input.id).bind(&helper).bind(now()+30).bind(now()).execute(&db.pool).await.map_err(unavailable)?;
     if result.rows_affected() == 0 {
         return Err(error(
             StatusCode::TOO_MANY_REQUESTS,
             "Wake request already queued",
         ));
     }
+    log::info!("event=wake_queued user={owner} target={} helper={helper}", input.id);
     Ok(Json(json!({"state":"queued"})))
 }
 
