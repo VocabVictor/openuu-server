@@ -6,11 +6,11 @@
 
 Build all programs with `cargo build --release`. Run `openuu-account`, `hbbs` and `hbbr` with the same absolute `OPENUU_ACCOUNT_DB` path. The default is `openuu-accounts.sqlite3` in the working directory. Restrict filesystem access to this database and its directory.
 
-`openuu-account` listens on `127.0.0.1:21114` by default. Put an HTTPS reverse proxy in front of it. The client refuses non-HTTPS account URLs except loopback addresses for local tests. `OPENUU_ACCOUNT_BIND` overrides the bind address. The service does not trust forwarded IP headers; login rate limits apply to its direct TCP peer.
+`openuu-account` listens on `127.0.0.1:21114` by default. The client accepts HTTP and HTTPS account URLs. HTTPS is recommended; an explicitly configured HTTP URL sends account credentials and session tokens without transport encryption. `OPENUU_ACCOUNT_BIND` overrides the bind address. The service does not trust forwarded IP headers; login rate limits apply to its direct TCP peer.
 
 Create a user by setting `OPENUU_NEW_PASSWORD` in the process environment, then running `openuu-account USERNAME`. The process creates the account and exits. Names accept ASCII letters, digits, dots, underscores and hyphens (1-64 characters); passwords must be 12-72 UTF-8 bytes. Clear the environment variable after use. There is no default password.
 
-Configure the HTTPS base URL in the client's Network / API server setting. Configure the matching ID/relay server and public key separately. Both controlling and controlled OpenUU devices must sign in. An account login does not replace the controlled device's password or approval requirements.
+Configure the HTTP or HTTPS base URL in the client's Network / API server setting. Configure the matching ID/relay server and public key separately. Both controlling and controlled OpenUU devices must sign in. An account login does not replace the controlled device's password or approval requirements.
 
 ## Authentication behavior
 
