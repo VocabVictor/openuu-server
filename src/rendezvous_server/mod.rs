@@ -42,6 +42,8 @@ use std::{
 
 mod io;
 mod secure;
+#[cfg(test)]
+mod secure_tests;
 mod udp;
 mod tcp;
 mod punch;
