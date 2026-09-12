@@ -38,6 +38,30 @@
         assert!(db.user(&token).await.unwrap().is_none());
     }
     #[tokio::test]
+    async fn paired_tickets_redeem_once_each() {
+        let db = Accounts::open(":memory:").await.unwrap();
+        db.create_user("tester", "long-test-password".into())
+            .await
+            .unwrap();
+        let token = db
+            .login("tester".into(), "long-test-password".into())
+            .await
+            .unwrap()
+            .unwrap();
+        let controller = db.ticket(&token, "uuid-1").await.unwrap().unwrap();
+        let peer = db.ticket(&token, "uuid-1").await.unwrap().unwrap();
+        assert_ne!(controller, peer);
+        assert!(db.redeem(&peer, "uuid-1").await.unwrap());
+        assert!(!db.redeem(&peer, "uuid-1").await.unwrap(), "replay");
+        assert!(!db.redeem(&controller, "uuid-2").await.unwrap());
+        assert!(db.redeem(&controller, "uuid-1").await.unwrap());
+        assert!(!db.redeem(&controller, "uuid-1").await.unwrap(), "replay");
+        let peer = db.ticket(&token, "uuid-3").await.unwrap().unwrap();
+        db.revoke(&token).await.unwrap();
+        assert!(!db.redeem(&peer, "uuid-3").await.unwrap(), "revoked session");
+        assert!(db.ticket(&token, "uuid-4").await.unwrap().is_none());
+    }
+    #[tokio::test]
     async fn admin_commands() {
         let db = Accounts::open(":memory:").await.unwrap();
         assert!(db.create_user("bad name", "long-test-password".into()).await.is_err());

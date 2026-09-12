@@ -119,6 +119,28 @@ pub async fn redeem_ticket(ticket: &str, relay_id: &str) -> bool {
         }
     }
 }
+/// The ticket hbbs forwards to an unattended controlled peer inside RequestRelay
+/// (docs/relay-ticket-peer.md): a second single-use row bound to the controller's
+/// session and the relay uuid, so the peer needs no account of its own.
+pub async fn peer_ticket(session_token: &str, uuid: &str) -> Option<String> {
+    match shared().await {
+        Ok(db) => match db.ticket(session_token, uuid).await {
+            Ok(Some(ticket)) => Some(ticket),
+            Ok(None) => {
+                log::warn!("event=relay_peer_ticket_denied relay={uuid}");
+                None
+            }
+            Err(err) => {
+                log::error!("event=relay_peer_ticket_error relay={uuid} err={err}");
+                None
+            }
+        },
+        Err(err) => {
+            log::error!("event=account_db_unavailable err={err}");
+            None
+        }
+    }
+}
 pub fn router(db: Arc<Accounts>) -> Router {
     router_with_internal(db, internal::Secret::from_env())
 }
