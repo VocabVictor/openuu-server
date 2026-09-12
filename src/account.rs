@@ -5,12 +5,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use hbb_common::{tokio, ResultType};
+use hbb_common::{log, tokio, ResultType};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    Row, SqlitePool,
+    ConnectOptions, Row, SqlitePool,
 };
 use std::{
     collections::HashMap,
@@ -24,6 +24,11 @@ pub struct Accounts {
     pool: SqlitePool,
     attempts: Mutex<HashMap<std::net::IpAddr, (i64, u32)>>,
     hashing: Arc<Semaphore>,
+}
+pub struct AccountSummary {
+    pub name: String,
+    pub enabled: bool,
+    pub sessions: i64,
 }
 type ApiResult = Result<Json<Value>, (StatusCode, Json<Value>)>;
 fn error(code: StatusCode, message: &str) -> (StatusCode, Json<Value>) {
@@ -45,12 +50,14 @@ impl Accounts {
     pub async fn open(path: &str) -> ResultType<Self> {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
-            .connect_with(
-                SqliteConnectOptions::new()
+            .connect_with({
+                let mut options = SqliteConnectOptions::new()
                     .filename(path)
                     .create_if_missing(true)
-                    .busy_timeout(Duration::from_secs(5)),
-            )
+                    .busy_timeout(Duration::from_secs(5));
+                options.log_statements(log::LevelFilter::Debug);
+                options
+            })
             .await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS accounts (name TEXT PRIMARY KEY, password_hash TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)").execute(&pool).await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS account_sessions (token_hash BLOB PRIMARY KEY, name TEXT NOT NULL, expires INTEGER NOT NULL)").execute(&pool).await?;
@@ -65,23 +72,108 @@ impl Accounts {
             hashing: Arc::new(Semaphore::new(4)),
         })
     }
-    pub async fn create_user(&self, name: &str, password: String) -> ResultType<()> {
-        if name.is_empty()
-            || name.len() > 64
-            || !name
+    fn valid_name(name: &str) -> bool {
+        !name.is_empty()
+            && name.len() <= 64
+            && name
                 .chars()
                 .all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
-            || password.len() < 12
-            || password.len() > 72
-        {
-            hbb_common::bail!("Use a 1-64 character account name and a 12-72 byte password");
+    }
+    async fn hash_password(password: String) -> ResultType<String> {
+        if password.len() < 12 || password.len() > 72 {
+            hbb_common::bail!("Use a 12-72 byte password");
         }
-        let hash =
+        Ok(
             tokio::task::spawn_blocking(move || bcrypt::hash(password, bcrypt::DEFAULT_COST))
-                .await??;
+                .await??,
+        )
+    }
+    pub async fn create_user(&self, name: &str, password: String) -> ResultType<()> {
+        if !Self::valid_name(name) {
+            hbb_common::bail!("Use a 1-64 character account name (letters, digits, . _ -)");
+        }
+        let hash = Self::hash_password(password).await?;
         sqlx::query("INSERT INTO accounts(name,password_hash) VALUES(?,?)")
             .bind(name)
             .bind(hash)
+            .execute(&self.pool)
+            .await?;
+        log::info!("event=account_created user={name}");
+        Ok(())
+    }
+    pub async fn set_password(&self, name: &str, password: String) -> ResultType<()> {
+        let hash = Self::hash_password(password).await?;
+        let result = sqlx::query("UPDATE accounts SET password_hash=? WHERE name=?")
+            .bind(hash)
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        if result.rows_affected() == 0 {
+            hbb_common::bail!("No such account: {name}");
+        }
+        self.revoke_user(name).await?;
+        log::info!("event=password_changed user={name}");
+        Ok(())
+    }
+    pub async fn set_enabled(&self, name: &str, enabled: bool) -> ResultType<()> {
+        let result = sqlx::query("UPDATE accounts SET enabled=? WHERE name=?")
+            .bind(enabled as i64)
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        if result.rows_affected() == 0 {
+            hbb_common::bail!("No such account: {name}");
+        }
+        if !enabled {
+            self.revoke_user(name).await?;
+        }
+        log::info!(
+            "event=account_{} user={name}",
+            if enabled { "enabled" } else { "disabled" }
+        );
+        Ok(())
+    }
+    pub async fn delete_user(&self, name: &str) -> ResultType<()> {
+        self.revoke_user(name).await?;
+        sqlx::query("DELETE FROM wol_jobs WHERE owner=?")
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("DELETE FROM wol_devices WHERE owner=?")
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        let result = sqlx::query("DELETE FROM accounts WHERE name=?")
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        if result.rows_affected() == 0 {
+            hbb_common::bail!("No such account: {name}");
+        }
+        log::info!("event=account_deleted user={name}");
+        Ok(())
+    }
+    pub async fn list_users(&self) -> ResultType<Vec<AccountSummary>> {
+        let rows = sqlx::query("SELECT a.name AS name, a.enabled AS enabled, (SELECT COUNT(*) FROM account_sessions s WHERE s.name=a.name AND s.expires>?) AS sessions FROM accounts a ORDER BY a.name")
+            .bind(now())
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|r| AccountSummary {
+                name: r.get("name"),
+                enabled: r.get::<i64, _>("enabled") != 0,
+                sessions: r.get::<i64, _>("sessions"),
+            })
+            .collect())
+    }
+    async fn revoke_user(&self, name: &str) -> ResultType<()> {
+        sqlx::query("DELETE FROM relay_tickets WHERE session_hash IN (SELECT token_hash FROM account_sessions WHERE name=?)")
+            .bind(name)
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("DELETE FROM account_sessions WHERE name=?")
+            .bind(name)
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -188,8 +280,18 @@ pub async fn shared() -> ResultType<&'static Accounts> {
 }
 pub async fn authorized(token: &str) -> bool {
     match shared().await {
-        Ok(db) => matches!(db.user(token).await, Ok(Some(_))),
-        Err(_) => false,
+        Ok(db) => match db.user(token).await {
+            Ok(Some(_)) => true,
+            Ok(None) => false,
+            Err(err) => {
+                log::error!("event=session_check_error err={err}");
+                false
+            }
+        },
+        Err(err) => {
+            log::error!("event=account_db_unavailable err={err}");
+            false
+        }
     }
 }
 fn bearer(headers: &HeaderMap) -> &str {
@@ -224,6 +326,7 @@ async fn login(
         let entry = attempts.entry(addr.ip()).or_insert((now(), 0));
         entry.1 += 1;
         if entry.1 > 10 {
+            log::warn!("event=login_rate_limited ip={}", addr.ip());
             return Err(error(StatusCode::TOO_MANY_REQUESTS, "Try again later"));
         }
     }
@@ -232,13 +335,22 @@ async fn login(
     let token = db
         .login(input.username.clone(), input.password)
         .await
-        .map_err(|_| {
+        .map_err(|err| {
+            log::error!("event=login_error ip={} err={err}", addr.ip());
             error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Authentication unavailable",
             )
         })?
-        .ok_or_else(|| error(StatusCode::UNAUTHORIZED, "Invalid username or password"))?;
+        .ok_or_else(|| {
+            log::warn!(
+                "event=login_failed ip={} user={:?}",
+                addr.ip(),
+                input.username.chars().take(64).collect::<String>()
+            );
+            error(StatusCode::UNAUTHORIZED, "Invalid username or password")
+        })?;
+    log::info!("event=login_ok ip={} user={}", addr.ip(), input.username);
     Ok(Json(
         json!({"type":"access_token","access_token":token,"user":profile(&input.username)}),
     ))
@@ -314,13 +426,33 @@ async fn relay_ticket(
                 "Authentication unavailable",
             )
         })?
-        .ok_or_else(|| error(StatusCode::UNAUTHORIZED, "Login required"))?;
+        .ok_or_else(|| {
+            log::warn!("event=relay_ticket_denied");
+            error(StatusCode::UNAUTHORIZED, "Login required")
+        })?;
+    log::info!(
+        "event=relay_ticket_issued relay={}",
+        body.get("uuid").and_then(Value::as_str).unwrap_or("")
+    );
     Ok(Json(json!({"ticket":ticket})))
 }
 pub async fn redeem_ticket(ticket: &str, relay_id: &str) -> bool {
     match shared().await {
-        Ok(db) => matches!(db.redeem(ticket, relay_id).await, Ok(true)),
-        Err(_) => false,
+        Ok(db) => match db.redeem(ticket, relay_id).await {
+            Ok(true) => true,
+            Ok(false) => {
+                log::warn!("event=relay_ticket_rejected relay={relay_id}");
+                false
+            }
+            Err(err) => {
+                log::error!("event=relay_ticket_error relay={relay_id} err={err}");
+                false
+            }
+        },
+        Err(err) => {
+            log::error!("event=account_db_unavailable err={err}");
+            false
+        }
     }
 }
 pub fn router(db: Arc<Accounts>) -> Router {
@@ -379,6 +511,49 @@ mod tests {
             .await
             .unwrap();
         assert!(db.user(&token).await.unwrap().is_none());
+    }
+    #[tokio::test]
+    async fn admin_commands() {
+        let db = Accounts::open(":memory:").await.unwrap();
+        assert!(db.create_user("bad name", "long-test-password".into()).await.is_err());
+        assert!(db.create_user("short", "short".into()).await.is_err());
+        db.create_user("alice", "long-test-password".into()).await.unwrap();
+        db.create_user("bob", "long-test-password".into()).await.unwrap();
+        assert!(db.create_user("alice", "long-test-password".into()).await.is_err());
+        let token = db.login("alice".into(), "long-test-password".into()).await.unwrap().unwrap();
+        let ticket = db.ticket(&token, "relay-1").await.unwrap().unwrap();
+        let listed = db.list_users().await.unwrap();
+        assert_eq!(listed.len(), 2);
+        assert_eq!((listed[0].name.as_str(), listed[0].enabled, listed[0].sessions), ("alice", true, 1));
+        assert_eq!((listed[1].name.as_str(), listed[1].sessions), ("bob", 0));
+
+        assert!(db.set_password("nobody", "long-test-password".into()).await.is_err());
+        assert!(db.set_password("alice", "short".into()).await.is_err());
+        db.set_password("alice", "another-long-password".into()).await.unwrap();
+        assert!(db.user(&token).await.unwrap().is_none());
+        assert!(!db.redeem(&ticket, "relay-1").await.unwrap());
+        assert!(db.login("alice".into(), "long-test-password".into()).await.unwrap().is_none());
+        let token = db.login("alice".into(), "another-long-password".into()).await.unwrap().unwrap();
+
+        assert!(db.set_enabled("nobody", false).await.is_err());
+        db.set_enabled("alice", false).await.unwrap();
+        assert!(db.user(&token).await.unwrap().is_none());
+        assert!(db.login("alice".into(), "another-long-password".into()).await.unwrap().is_none());
+        assert!(!db.list_users().await.unwrap()[0].enabled);
+        db.set_enabled("alice", true).await.unwrap();
+        assert!(db.login("alice".into(), "another-long-password".into()).await.unwrap().is_some());
+
+        sqlx::query("INSERT INTO wol_devices(owner,id,seen,session,peers) VALUES('alice','dev',0,x'00','[]')")
+            .execute(&db.pool).await.unwrap();
+        assert!(db.delete_user("nobody").await.is_err());
+        db.delete_user("alice").await.unwrap();
+        let listed = db.list_users().await.unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].name, "bob");
+        let leftover: i64 = sqlx::query("SELECT COUNT(*) AS n FROM wol_devices WHERE owner='alice'")
+            .fetch_one(&db.pool).await.unwrap().get("n");
+        assert_eq!(leftover, 0);
+        assert!(db.login("alice".into(), "another-long-password".into()).await.unwrap().is_none());
     }
 }
 

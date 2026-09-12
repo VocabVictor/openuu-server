@@ -8,7 +8,9 @@ Build all programs with `cargo build --release`. Run `openuu-account`, `hbbs` an
 
 `openuu-account` listens on `127.0.0.1:21114` by default. The client accepts HTTP and HTTPS account URLs. HTTPS is recommended; an explicitly configured HTTP URL sends account credentials and session tokens without transport encryption. `OPENUU_ACCOUNT_BIND` overrides the bind address. The service does not trust forwarded IP headers; login rate limits apply to its direct TCP peer.
 
-Create a user by setting `OPENUU_NEW_PASSWORD` in the process environment, then running `openuu-account USERNAME`. The process creates the account and exits. Names accept ASCII letters, digits, dots, underscores and hyphens (1-64 characters); passwords must be 12-72 UTF-8 bytes. Clear the environment variable after use. There is no default password.
+Create a user by setting `OPENUU_NEW_PASSWORD` in the process environment, then running `openuu-account create USERNAME`. The process creates the account and exits. Names accept ASCII letters, digits, dots, underscores and hyphens (1-64 characters); passwords must be 12-72 UTF-8 bytes. Clear the environment variable after use. There is no default password. The old `openuu-account USERNAME` form is no longer accepted.
+
+The same binary manages existing accounts: `passwd NAME` (new password from `OPENUU_NEW_PASSWORD`, revokes sessions), `disable NAME` / `enable NAME`, `delete NAME` and `list`. See [operations.md](operations.md) for usage on the deployed server.
 
 Configure the HTTP or HTTPS base URL in the client's Network / API server setting. Configure the matching ID/relay server and public key separately. Both controlling and controlled OpenUU devices must sign in. An account login does not replace the controlled device's password or approval requirements.
 
@@ -35,6 +37,6 @@ Account-scoped cloud address book and device groups are not implemented; their i
 
 ## Verification
 
-`cargo test --lib account::` covers password failures, invalid/expired/revoked sessions, relay-ticket scope and single use, HTTP compatibility and login rate limiting. `cargo check --bins` covers all service binaries.
+`cargo test --lib account::` covers password failures, invalid/expired/revoked sessions, relay-ticket scope and single use, HTTP compatibility, login rate limiting and the account administration commands. `cargo check --bins` covers all service binaries.
 
 A full native OpenUU client build is required for connection enforcement. A Flutter-only build with an old precompiled native library does **not** enforce this policy on native paths.
