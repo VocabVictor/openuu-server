@@ -1,0 +1,2 @@
+bin/openuu-account usr/bin
+systemd/openuu-account.service lib/systemd/system

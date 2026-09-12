@@ -5,6 +5,20 @@ networks:
     external: false
 
 services:
+  account:
+    container_name: openuu-account
+    image: openuu-server:latest
+    command: openuu-account
+    environment:
+      OPENUU_ACCOUNT_BIND: 0.0.0.0:21114
+    ports:
+      - "127.0.0.1:21114:21114"
+    volumes:
+      - ./data:/root
+    networks:
+      - openuu-net
+    restart: unless-stopped
+
   hbbs:
     container_name: hbbs
     ports:

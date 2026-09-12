@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenUU Account Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/openuu-server
+Environment=OPENUU_ACCOUNT_DB=/var/lib/openuu-server/openuu-accounts.sqlite3
+Environment=OPENUU_ACCOUNT_BIND=127.0.0.1:21114
+ExecStart=/usr/bin/openuu-account
+UMask=0077
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

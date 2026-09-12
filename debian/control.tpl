@@ -25,3 +25,9 @@ Depends: ${misc:Depends}
 Description: OpenUU server
  Self-host your own OpenUU server, it is free and open source.
  This package contains the openuu-utils binary.
+
+Package: openuu-server-account
+Architecture: {{ ARCH }}
+Depends: systemd ${misc:Depends}
+Description: OpenUU account service
+ Account authentication and relay authorization for OpenUU.

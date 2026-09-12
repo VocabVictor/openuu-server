@@ -7,6 +7,10 @@ build = "build.rs"
 default-run = "hbbs"
 
 [[bin]]
+name = "openuu-account"
+path = "src/account_main.rs"
+
+[[bin]]
 name = "hbbr"
 path = "src/hbbr.rs"
 
