@@ -97,6 +97,12 @@ impl RendezvousServer {
                 (r.last_reg_time.elapsed().as_millis() as i64, r.socket_addr)
             };
             if elapsed >= REG_TIMEOUT {
+                log::info!(
+                    "event=punch_hole from={} id={} decision=offline last_reg_ms={}",
+                    addr,
+                    id,
+                    elapsed
+                );
                 let mut msg_out = RendezvousMessage::new();
                 msg_out.set_punch_hole_response(PunchHoleResponse {
                     failure: punch_hole_response::Failure::OFFLINE.into(),
@@ -142,11 +148,14 @@ impl RendezvousServer {
                 });
             let socket_addr = AddrMangle::encode(addr).into();
             if same_intranet {
-                log::debug!(
-                    "Fetch local addr {:?} {:?} request from {:?}",
+                log::info!(
+                    "event=punch_hole from={} id={} peer={} decision=local_addr lan={} peer_lan={} relay={}",
+                    addr,
                     id,
                     peer_addr,
-                    addr
+                    is_lan,
+                    peer_is_lan,
+                    relay_server
                 );
                 msg_out.set_fetch_local_addr(FetchLocalAddr {
                     socket_addr,
@@ -154,11 +163,15 @@ impl RendezvousServer {
                     ..Default::default()
                 });
             } else {
-                log::debug!(
-                    "Punch hole {:?} {:?} request from {:?}",
+                log::info!(
+                    "event=punch_hole from={} id={} peer={} decision=punch nat_type={:?} lan={} peer_lan={} relay={}",
+                    addr,
                     id,
                     peer_addr,
-                    addr
+                    ph.nat_type,
+                    is_lan,
+                    peer_is_lan,
+                    relay_server
                 );
                 msg_out.set_punch_hole(PunchHole {
                     socket_addr,
@@ -169,6 +182,7 @@ impl RendezvousServer {
             }
             Ok((msg_out, Some(peer_addr)))
         } else {
+            log::info!("event=punch_hole from={} id={} decision=id_not_exist", addr, id);
             let mut msg_out = RendezvousMessage::new();
             msg_out.set_punch_hole_response(PunchHoleResponse {
                 failure: punch_hole_response::Failure::ID_NOT_EXIST.into(),
