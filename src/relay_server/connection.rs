@@ -151,9 +151,9 @@ async fn make_pair_(stream: impl StreamTrait, addr: SocketAddr, key: &str, limit
                         }
                         if let Err(err) = relay(addr, &mut stream, peer, limiter, id.clone()).await
                         {
-                            log::info!("Relay of {} closed: {}", addr, err);
+                            log::info!("Relay {} of {} closed: {}", rf.uuid, addr, err);
                         } else {
-                            log::info!("Relay of {} closed", addr);
+                            log::info!("Relay {} of {} closed", rf.uuid, addr);
                         }
                         USAGE.write().await.remove(&id);
                     } else {
