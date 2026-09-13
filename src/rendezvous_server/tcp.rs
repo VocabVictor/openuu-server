@@ -112,14 +112,11 @@ impl RendezvousServer {
                     msg_out.set_test_nat_response(res);
                     Self::send_to_sink(sink, msg_out).await;
                 }
-                Some(rendezvous_message::Union::RegisterPk(_)) => {
-                    let res = register_pk_response::Result::NOT_SUPPORT;
-                    let mut msg_out = RendezvousMessage::new();
-                    msg_out.set_register_pk_response(RegisterPkResponse {
-                        result: res.into(),
-                        ..Default::default()
-                    });
-                    Self::send_to_sink(sink, msg_out).await;
+                Some(rendezvous_message::Union::RegisterPeer(rp)) => {
+                    self.handle_tcp_register_peer(rp, sink, addr).await;
+                }
+                Some(rendezvous_message::Union::RegisterPk(rk)) => {
+                    self.handle_tcp_register_pk(rk, sink, addr).await;
                 }
                 _ => {}
             }
@@ -149,6 +146,7 @@ impl RendezvousServer {
                     Sink::Ws(ws) => {
                         allow_err!(ws.send(tungstenite::Message::Binary(bytes)).await);
                     }
+                    Sink::Closed => {}
                 }
             }
         }

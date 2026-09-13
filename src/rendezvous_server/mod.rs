@@ -51,6 +51,7 @@ mod relay_forward_tests;
 mod relay_response_tests;
 mod udp;
 mod tcp;
+mod tcp_register;
 mod punch;
 mod relay;
 mod console;
@@ -70,6 +71,8 @@ type WsSink = SplitSink<tokio_tungstenite::WebSocketStream<TcpStream>, tungsteni
 enum Sink {
     TcpStream(TcpStreamSink, Option<hbb_common::tcp::Encrypt>),
     Ws(WsSink),
+    /// Placeholder while a stored sink is temporarily taken out of `tcp_peers`.
+    Closed,
 }
 type Sender = mpsc::UnboundedSender<Data>;
 type Receiver = mpsc::UnboundedReceiver<Data>;
@@ -99,6 +102,8 @@ struct Inner {
 #[derive(Clone)]
 pub struct RendezvousServer {
     tcp_punch: Arc<Mutex<HashMap<SocketAddr, Sink>>>,
+    /// Sinks of peers registered over TCP, keyed by their connection address (see tcp_register.rs).
+    tcp_peers: Arc<Mutex<HashMap<SocketAddr, Sink>>>,
     punch_sessions: Arc<sessions::PunchSessions>,
     pm: PeerMap,
     tx: Sender,
@@ -155,6 +160,7 @@ impl RendezvousServer {
         };
         let mut rs = Self {
             tcp_punch: Arc::new(Mutex::new(HashMap::new())),
+            tcp_peers: Arc::new(Mutex::new(HashMap::new())),
             punch_sessions: Default::default(),
             pm,
             tx: tx.clone(),

@@ -6,6 +6,7 @@ async fn test_server() -> (RendezvousServer, mpsc::UnboundedReceiver<Data>) {
     let (tx, rx) = mpsc::unbounded_channel::<Data>();
     let rs = RendezvousServer {
         tcp_punch: Default::default(),
+        tcp_peers: Default::default(),
         punch_sessions: Default::default(),
         pm: PeerMap::new().await.unwrap(),
         tx,
