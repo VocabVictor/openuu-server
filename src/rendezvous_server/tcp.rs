@@ -114,9 +114,12 @@ impl RendezvousServer {
                 }
                 Some(rendezvous_message::Union::RegisterPeer(rp)) => {
                     self.handle_tcp_register_peer(rp, sink, addr).await;
+                    // keep the registration connection open (a false return closes it)
+                    return true;
                 }
                 Some(rendezvous_message::Union::RegisterPk(rk)) => {
                     self.handle_tcp_register_pk(rk, sink, addr).await;
+                    return true;
                 }
                 _ => {}
             }

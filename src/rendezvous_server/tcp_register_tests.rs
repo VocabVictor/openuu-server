@@ -77,7 +77,10 @@ fn register_peer(id: &str) -> Vec<u8> {
 async fn register_pk_over_tcp_stores_the_peer_and_answers_ok() {
     let mut rs = test_server().await;
     let (mut sink, mut client, peer_addr) = peer_socket().await;
-    rs.handle_tcp(&register_pk("123456789"), &mut sink, peer_addr, "", false).await;
+    assert!(
+        rs.handle_tcp(&register_pk("123456789"), &mut sink, peer_addr, "", false).await,
+        "the registration connection must stay open"
+    );
     match reply(&mut client).await {
         Some(rendezvous_message::Union::RegisterPkResponse(r)) => {
             assert_eq!(r.result.enum_value_or_default(), register_pk_response::Result::OK)
@@ -100,7 +103,11 @@ async fn register_peer_over_tcp_refreshes_the_peer_and_replies() {
         let peer = rs.pm.get_in_memory("123456789").await.unwrap();
         peer.write().await.last_reg_time = expired();
     }
-    rs.handle_tcp(&register_peer("123456789"), &mut sink, peer_addr, "", false).await;
+    assert!(
+        rs.handle_tcp(&register_peer("123456789"), &mut sink, peer_addr, "", false).await,
+        "the registration connection must stay open"
+    );
+    assert!(rs.tcp_peers.lock().await.contains_key(&try_into_v4(peer_addr)));
     match reply(&mut client).await {
         Some(rendezvous_message::Union::RegisterPeerResponse(r)) => assert!(!r.request_pk),
         other => panic!("expected RegisterPeerResponse, got {other:?}"),
