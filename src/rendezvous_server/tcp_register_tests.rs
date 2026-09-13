@@ -183,3 +183,47 @@ async fn closing_the_connection_forgets_the_sink() {
     rs.forget_tcp_peer(peer_addr).await;
     assert!(!rs.send_to_tcp_peer(peer_addr, RendezvousMessage::new()).await);
 }
+
+#[hbb_common::tokio::test]
+async fn a_request_on_the_registration_connection_is_still_answered() {
+    let mut rs = test_server().await;
+    let (mut sink, mut client, peer_addr) = peer_socket().await;
+    rs.handle_tcp(&register_pk("123456789"), &mut sink, peer_addr, "", false).await;
+    reply(&mut client).await;
+    assert!(sink.is_none());
+    let mut msg = RendezvousMessage::new();
+    msg.set_test_nat_request(TestNatRequest::default());
+    rs.handle_tcp(&msg.write_to_bytes().unwrap(), &mut sink, peer_addr, "", false)
+        .await;
+    match reply(&mut client).await {
+        Some(rendezvous_message::Union::TestNatResponse(r)) => {
+            assert_eq!(r.port, peer_addr.port() as i32)
+        }
+        other => panic!("expected TestNatResponse via the registered sink, got {other:?}"),
+    }
+}
+
+#[hbb_common::tokio::test]
+async fn two_tcp_peers_are_delivered_independently() {
+    let mut rs = test_server().await;
+    let (mut sink_a, mut client_a, addr_a) = peer_socket().await;
+    let (mut sink_b, mut client_b, addr_b) = peer_socket().await;
+    rs.handle_tcp(&register_pk("123456789"), &mut sink_a, addr_a, "", false).await;
+    rs.handle_tcp(&register_pk("987654321"), &mut sink_b, addr_b, "", false).await;
+    reply(&mut client_a).await;
+    reply(&mut client_b).await;
+    let mut msg = RendezvousMessage::new();
+    msg.set_punch_hole(PunchHole::default());
+    let (ra, rb) = hbb_common::tokio::join!(
+        rs.send_to_tcp_peer(addr_a, msg.clone()),
+        rs.send_to_tcp_peer(addr_b, msg.clone())
+    );
+    assert!(ra && rb);
+    assert!(matches!(reply(&mut client_a).await, Some(rendezvous_message::Union::PunchHole(_))));
+    assert!(matches!(reply(&mut client_b).await, Some(rendezvous_message::Union::PunchHole(_))));
+    // both sinks were put back
+    assert!(rs.send_to_tcp_peer(addr_a, msg.clone()).await);
+    assert!(rs.send_to_tcp_peer(addr_b, msg).await);
+    assert!(reply(&mut client_a).await.is_some());
+    assert!(reply(&mut client_b).await.is_some());
+}
