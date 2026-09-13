@@ -1,5 +1,18 @@
 # Repository Instructions
 
+## Verification is command-line only
+
+No end-to-end or GUI automation on virtual machines or any desktop: no
+synthesized clicks, no screenshot harvesting, no driving an RDP session.
+Verify with `cargo test`, `flutter test` / widget tests, the build-machine
+`check.ps1`, command-line interfaces (`--get-id`, `--option`,
+`--import-config`, `--connect` and its log outcome, service logs, `curl`
+against HTTP endpoints) and assertions on configuration files and logs. An
+installer is verified with a silent install (`msiexec /qn`) followed by
+service status, configuration file content and service log checks. When a
+screen has to be judged by eye, produce one screenshot for the user and stop;
+do not automate the interaction.
+
 ## Rust Rules
 
 - In Rust code, do not introduce `unwrap()` or `expect()`.
