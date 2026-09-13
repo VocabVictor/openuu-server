@@ -1,0 +1,9 @@
+[Unit]
+Description=OpenUU health check
+After=openuu-account.service openuu-hbbs.service openuu-hbbr.service
+[Service]
+Type=oneshot
+User=openuu
+Group=openuu
+ExecStart=/opt/openuu-server/bin/healthcheck.sh
+NoNewPrivileges=true

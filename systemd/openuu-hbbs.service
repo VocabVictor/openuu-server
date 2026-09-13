@@ -1,20 +1,17 @@
-
 [Unit]
-Description=OpenUU Signal Server
-
+Description=OpenUU hbbs
+After=network-online.target
+Wants=network-online.target
 [Service]
-Type=simple
-LimitNOFILE=1000000
-ExecStart=/usr/bin/hbbs
-WorkingDirectory=/var/lib/openuu-server/
-User=
-Group=
-Restart=always
-StandardOutput=append:/var/log/openuu-server/hbbs.log
-StandardError=append:/var/log/openuu-server/hbbs.error
-# Restart service after 10 seconds if node service crashes
-RestartSec=10
-
+User=openuu
+Group=openuu
+WorkingDirectory=/var/lib/openuu-server
+Environment=OPENUU_ACCOUNT_DB=/var/lib/openuu-server/openuu-accounts.sqlite3
+Environment=OPENUU_ACCOUNT_BIND=0.0.0.0:21114
+ExecStart=/opt/openuu-server/bin/hbbs -r rs.example.com:21117 -k _
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
-
