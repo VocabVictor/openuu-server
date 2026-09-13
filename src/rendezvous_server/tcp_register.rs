@@ -126,6 +126,11 @@ impl RendezvousServer {
         );
     }
 
+    /// True while `addr` is a registered TCP peer connection.
+    pub(super) async fn is_tcp_peer(&self, addr: SocketAddr) -> bool {
+        self.tcp_peers.lock().await.contains_key(&try_into_v4(addr))
+    }
+
     /// Forgets the TCP sink of a closed connection.
     pub(super) async fn forget_tcp_peer(&self, addr: SocketAddr) {
         if self.tcp_peers.lock().await.remove(&try_into_v4(addr)).is_some() {

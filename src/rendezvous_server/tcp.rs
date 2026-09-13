@@ -124,7 +124,9 @@ impl RendezvousServer {
                 _ => {}
             }
         }
-        false
+        // one-shot request connections close here; a connection that registered a peer
+        // stays open so its heartbeats and pushes keep flowing (tcp_register.rs)
+        self.is_tcp_peer(addr).await
     }
     #[inline]
     pub(super) async fn send_to_tcp(&mut self, msg: RendezvousMessage, addr: SocketAddr) {
