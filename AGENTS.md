@@ -65,3 +65,11 @@ commit (dozens of files, thousands of changed lines) cannot be reviewed.
   whatever else is staged. A bare `git commit`, `git commit -a` or
   `git add -A` sweeps other people's staged work into your commit. Check
   `git show --stat HEAD` afterwards.
+
+## Documentation and test data
+
+* Documents, commit messages and test fixtures must not contain real IP
+  addresses, host names, account names, cloud instance ids or device ids.
+  Use placeholders: documentation address ranges (192.0.2.0/24, 198.51.100.0/24,
+  203.0.113.0/24, or a private range when the test needs one), made-up names
+  (`alice`, `<user>`) and ids such as `123456789`. The repository is published.
