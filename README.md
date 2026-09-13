@@ -19,6 +19,8 @@ cargo build --release
 ```
 
 The binaries are written to `target/release`. Deployment examples are in `systemd/`, `docker-compose.yml` and `kubernetes/`.
+
+On a server, `OPENUU_RELAY_ADDR=<public-ip>:21117 sh scripts/deploy-units.sh` writes the systemd units, installs `systemd/healthcheck.sh` and enables `openuu-healthcheck.timer`; `sh scripts/deploy-install-bins.sh target/release` installs the binaries and starts the services. Both read their addresses from the environment or a `.env` file, never from the repository.
 Docker examples refer to locally built OpenUU images; no published image is assumed.
 For a classic image, copy statically linked Linux `hbbs`, `hbbr` and `openuu-account` binaries to
 `docker-classic/`, then run `docker build -t openuu-server:latest docker-classic`.
