@@ -73,7 +73,7 @@ commit (dozens of files, thousands of changed lines) cannot be reviewed.
   The author is the human account; tooling is not credited in history.
 * GitHub holds only `master`. Nobody pushes any other branch there; work in
   progress lives in local branches and on the build machine's bare repository.
-  Linux verification runs through `C:uild\check-linux.ps1` (WSL Debian on
+  Linux verification runs through `C:\build\check-linux.ps1` (WSL Debian on
   the build machine); the `linux-check.yml` workflow is only a backstop on
   pushes to `master`.
 
