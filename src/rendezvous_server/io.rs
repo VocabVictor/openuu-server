@@ -12,9 +12,14 @@ impl RendezvousServer {
         key: &str,
     ) -> LoopFailure {
         let mut timer_check_relay = interval(Duration::from_millis(CHECK_RELAY_TIMEOUT));
+        let mut transport_ticks: u32 = 0;
         loop {
             tokio::select! {
                 _ = timer_check_relay.tick() => {
+                    transport_ticks += 1;
+                    if transport_ticks % TRANSPORT_LOG_EVERY_TICKS == 0 {
+                        self.log_peer_transport().await;
+                    }
                     if self.relay_servers0.len() > 1 {
                         let rs = self.relay_servers0.clone();
                         let tx = self.tx.clone();

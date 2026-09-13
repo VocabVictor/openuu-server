@@ -174,6 +174,18 @@ impl PeerMap {
     }
 
     #[inline]
+    /// Peers whose last registration is younger than `timeout_ms`.
+    pub(crate) async fn online_count(&self, timeout_ms: i64) -> usize {
+        let map = self.map.read().await;
+        let mut n = 0;
+        for peer in map.values() {
+            if (peer.read().await.last_reg_time.elapsed().as_millis() as i64) < timeout_ms {
+                n += 1;
+            }
+        }
+        n
+    }
+    #[inline]
     pub(crate) async fn is_in_memory(&self, id: &str) -> bool {
         self.map.read().await.contains_key(id)
     }

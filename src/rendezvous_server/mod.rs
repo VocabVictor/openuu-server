@@ -81,6 +81,8 @@ type Receiver = mpsc::UnboundedReceiver<Data>;
 static ROTATION_RELAY_SERVER: AtomicUsize = AtomicUsize::new(0);
 type RelayServers = Vec<String>;
 const CHECK_RELAY_TIMEOUT: u64 = 3_000;
+/// `event=peer_transport` is logged every this many relay-check ticks (3 s each).
+const TRANSPORT_LOG_EVERY_TICKS: u32 = 20;
 static ALWAYS_USE_RELAY: AtomicBool = AtomicBool::new(false);
 
 // Store punch hole requests

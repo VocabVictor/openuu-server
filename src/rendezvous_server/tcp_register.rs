@@ -113,6 +113,19 @@ impl RendezvousServer {
         allow_err!(socket.send(msg, addr).await);
     }
 
+    /// Periodic share of TCP-registered peers among online peers, for judging when the
+    /// UDP registration path can be retired.
+    pub(super) async fn log_peer_transport(&self) {
+        let online = self.pm.online_count(REG_TIMEOUT).await;
+        let tcp = self.tcp_peers.lock().await.len();
+        log::info!(
+            "event=peer_transport online={} tcp={} udp={}",
+            online,
+            tcp,
+            online.saturating_sub(tcp)
+        );
+    }
+
     /// Forgets the TCP sink of a closed connection.
     pub(super) async fn forget_tcp_peer(&self, addr: SocketAddr) {
         if self.tcp_peers.lock().await.remove(&try_into_v4(addr)).is_some() {
