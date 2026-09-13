@@ -65,7 +65,7 @@ impl RendezvousServer {
                 }
                 Some(rendezvous_message::Union::RelayResponse(mut rr)) => {
                     let addr_b = AddrMangle::decode(&rr.socket_addr);
-                    self.answer_peer_initiated_relay(&rr, addr_b, sink).await;
+                    self.answer_peer_initiated_relay(&rr, addr_b, sink, addr).await;
                     rr.socket_addr = Default::default();
                     let id = rr.id();
                     if !id.is_empty() {
@@ -110,7 +110,7 @@ impl RendezvousServer {
                         res.cu = MessageField::from_option(Some(cu));
                     }
                     msg_out.set_test_nat_response(res);
-                    Self::send_to_sink(sink, msg_out).await;
+                    self.reply_on_connection(sink, addr, msg_out).await;
                 }
                 Some(rendezvous_message::Union::RegisterPeer(rp)) => {
                     self.handle_tcp_register_peer(rp, sink, addr).await;
@@ -126,6 +126,11 @@ impl RendezvousServer {
     #[inline]
     pub(super) async fn send_to_tcp(&mut self, msg: RendezvousMessage, addr: SocketAddr) {
         let mut tcp = self.tcp_punch.lock().await.remove(&try_into_v4(addr));
+        if tcp.is_none() {
+            // the request came on a connection that registered the peer (tcp_register.rs)
+            self.send_to_tcp_peer(addr, msg).await;
+            return;
+        }
         tokio::spawn(async move {
             Self::send_to_sink(&mut tcp, msg).await;
         });
@@ -159,6 +164,11 @@ impl RendezvousServer {
         addr: SocketAddr,
     ) -> ResultType<()> {
         let mut sink = self.tcp_punch.lock().await.remove(&try_into_v4(addr));
+        if sink.is_none() {
+            // the request came on a connection that registered the peer (tcp_register.rs)
+            self.send_to_tcp_peer(addr, msg).await;
+            return Ok(());
+        }
         Self::send_to_sink(&mut sink, msg).await;
         Ok(())
     }
@@ -244,6 +254,7 @@ impl RendezvousServer {
         rr: &RelayResponse,
         controller: SocketAddr,
         sink: &mut Option<Sink>,
+        from: SocketAddr,
     ) {
         if rr.uuid.is_empty() {
             return;
@@ -260,7 +271,7 @@ impl RendezvousServer {
             token: ticket,
             ..Default::default()
         });
-        Self::send_to_sink(sink, back).await;
+        self.reply_on_connection(sink, from, back).await;
         log::info!("event=relay_peer_ticket uuid={} via=response", rr.uuid);
     }
 }
