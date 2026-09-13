@@ -71,6 +71,10 @@ commit (dozens of files, thousands of changed lines) cannot be reviewed.
 * A commit message carries no AI attribution: no `Co-Authored-By: Claude ...`,
   `Claude-Session: ...`, `Generated with Claude Code` or similar trailer.
   The author is the human account; tooling is not credited in history.
+  After cloning run `pwsh -File tools/git-hooks/install.ps1`: it installs a
+  `commit-msg` hook that rejects such trailers, and a rejected commit is
+  fixed, never forced through with `--no-verify`. Check with
+  `git log -1 --format=%B | grep -i claude` before reporting a commit.
 * GitHub holds only `master`. Nobody pushes any other branch there; work in
   progress lives in local branches and on the build machine's bare repository.
   Linux verification runs through `C:\build\check-linux.ps1` (WSL Debian on

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Rejects commit messages carrying an AI attribution trailer (AGENTS.md, "Commit messages
+# and remote branches"). Installed by tools/git-hooks/install.ps1 into .git/hooks, which
+# every worktree of the repository shares.
+if grep -qiE 'Co-Authored-By:.*(Claude|Anthropic)|Claude-Session|Generated with.*Claude' "$1"; then
+    echo "commit-msg: AI attribution trailer found; remove the Co-Authored-By / Claude-Session / Generated-with line (AGENTS.md)" >&2
+    grep -niE 'Co-Authored-By:.*(Claude|Anthropic)|Claude-Session|Generated with.*Claude' "$1" >&2
+    exit 1
+fi
+exit 0
