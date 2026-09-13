@@ -1,6 +1,6 @@
 # Bandwidth assessment: 50 Mbps outbound on the Tencent CVM
 
-Status: assessment only; no configuration was changed. Written 2026-09-13 for CVM ins-xxxxxxxx
+Status: assessment only; no configuration was changed. Written 2026-09-13 for CVM <instance-id>
 (ap-nanjing, 2 vCPU / 2 GB, public IP 203.0.113.10, outbound bandwidth cap 50 Mbps).
 
 ## 1. What the cap applies to

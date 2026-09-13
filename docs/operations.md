@@ -73,7 +73,7 @@ that the three units are active. It exits 0 on success and 1 on any failure.
 sh /opt/openuu-server/healthcheck.sh
 
 # From an operator machine against the public address
-sh systemd/healthcheck.sh rs.example.com
+sh systemd/healthcheck.sh 203.0.113.10
 ```
 
 Run it every few minutes from cron or a systemd timer and alert on non-zero exit, for example:

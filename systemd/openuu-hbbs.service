@@ -8,7 +8,7 @@ Group=openuu
 WorkingDirectory=/var/lib/openuu-server
 Environment=OPENUU_ACCOUNT_DB=/var/lib/openuu-server/openuu-accounts.sqlite3
 Environment=OPENUU_ACCOUNT_BIND=0.0.0.0:21114
-ExecStart=/opt/openuu-server/bin/hbbs -r rs.example.com:21117 -k _
+ExecStart=/opt/openuu-server/bin/hbbs -r 203.0.113.10:21117 -k _
 Restart=on-failure
 RestartSec=3
 UMask=0077
