@@ -134,7 +134,8 @@ async fn pushes_reach_a_tcp_registered_peer_through_its_sink() {
         }
         other => panic!("expected PunchHole, got {other:?}"),
     }
-    // the sink survives a send and keeps working
+    // the sink survives a send and keeps working, and the peer stays registered
+    assert!(rs.tcp_peers.lock().await.contains_key(&try_into_v4(peer_addr)));
     assert!(rs.send_to_tcp_peer(peer_addr, msg).await);
     assert!(reply(&mut client).await.is_some());
     let stranger: SocketAddr = "198.51.100.7:5000".parse().unwrap();
@@ -200,8 +201,12 @@ async fn a_request_on_the_registration_connection_is_still_answered() {
     assert!(sink.is_none());
     let mut msg = RendezvousMessage::new();
     msg.set_test_nat_request(TestNatRequest::default());
-    rs.handle_tcp(&msg.write_to_bytes().unwrap(), &mut sink, peer_addr, "", false)
-        .await;
+    assert!(
+        rs.handle_tcp(&msg.write_to_bytes().unwrap(), &mut sink, peer_addr, "", false)
+            .await,
+        "TestNatRequest must not close the connection"
+    );
+    assert!(rs.tcp_peers.lock().await.contains_key(&try_into_v4(peer_addr)));
     match reply(&mut client).await {
         Some(rendezvous_message::Union::TestNatResponse(r)) => {
             assert_eq!(r.port, peer_addr.port() as i32)
@@ -215,8 +220,8 @@ async fn two_tcp_peers_are_delivered_independently() {
     let mut rs = test_server().await;
     let (mut sink_a, mut client_a, addr_a) = peer_socket().await;
     let (mut sink_b, mut client_b, addr_b) = peer_socket().await;
-    rs.handle_tcp(&register_pk("123456789"), &mut sink_a, addr_a, "", false).await;
-    rs.handle_tcp(&register_pk("987654321"), &mut sink_b, addr_b, "", false).await;
+    assert!(rs.handle_tcp(&register_pk("123456789"), &mut sink_a, addr_a, "", false).await);
+    assert!(rs.handle_tcp(&register_pk("987654321"), &mut sink_b, addr_b, "", false).await);
     reply(&mut client_a).await;
     reply(&mut client_b).await;
     let mut msg = RendezvousMessage::new();
