@@ -55,6 +55,8 @@ mod tcp_register_tests;
 mod udp_nat_tests;
 #[cfg(test)]
 mod udp_register_tests;
+#[cfg(test)]
+mod online_query_tests;
 mod udp;
 mod tcp;
 mod tcp_register;
