@@ -51,6 +51,8 @@ mod relay_forward_tests;
 mod relay_response_tests;
 #[cfg(test)]
 mod tcp_register_tests;
+#[cfg(test)]
+mod udp_nat_tests;
 mod udp;
 mod tcp;
 mod tcp_register;

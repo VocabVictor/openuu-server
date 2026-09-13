@@ -35,6 +35,21 @@ impl RendezvousServer {
                     let res = self.register_pk_result(rk, addr).await;
                     send_rk_res(socket, addr, res).await?
                 }
+                Some(rendezvous_message::Union::TestNatRequest(tar)) => {
+                    let mut msg_out = RendezvousMessage::new();
+                    let mut res = TestNatResponse {
+                        port: addr.port() as _,
+                        ..Default::default()
+                    };
+                    if self.inner.serial > tar.serial {
+                        let mut cu = ConfigUpdate::new();
+                        cu.serial = self.inner.serial;
+                        cu.rendezvous_servers = (*self.rendezvous_servers).clone();
+                        res.cu = MessageField::from_option(Some(cu));
+                    }
+                    msg_out.set_test_nat_response(res);
+                    socket.send(&msg_out, addr).await?;
+                }
                 Some(rendezvous_message::Union::PunchHoleRequest(ph)) => {
                     // UDP PunchHoleRequest is intentionally unsupported.
                     // The supported client path sends PunchHoleRequest over TCP/WS.

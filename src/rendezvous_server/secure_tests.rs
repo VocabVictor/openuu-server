@@ -74,7 +74,7 @@ fn offer_is_rejected_by_a_client_with_another_public_key() {
     assert!(sign::verify(&ex.keys[0], &other_pk).is_err());
 }
 
-async fn test_server(sk: Option<sign::SecretKey>) -> RendezvousServer {
+pub(super) async fn test_server(sk: Option<sign::SecretKey>) -> RendezvousServer {
     let db = std::env::temp_dir().join(format!("hbbs-secure-test-{}.sqlite3", uuid::Uuid::new_v4()));
     std::env::set_var("DB_URL", &db);
     let (tx, _rx) = mpsc::unbounded_channel::<Data>();
